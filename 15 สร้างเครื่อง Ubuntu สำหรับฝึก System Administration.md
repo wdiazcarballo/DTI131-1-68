@@ -1,12 +1,12 @@
 # คู่มือปฏิบัติการ: Linux System Admin บน AWS Academy
-## 👥 กิจกรรมคู่ (Pair Activity) - 3 ชั่วโมง
+## 🎯 Individual Lab Activity - 3 ชั่วโมง
 
 ---
 
 ## 📋 ข้อมูลทั่วไป
 
 **วัตถุประสงค์:** ฝึกทักษะ System Administrator แบบ hands-on ผ่าน AWS EC2  
-**รูปแบบ:** ทำงานเป็นคู่ (2 คน/กลุ่ม)  
+**รูปแบบ:** ปฏิบัติเดี่ยว (Individual)  
 **ระยะเวลา:** 3 ชั่วโมง  
 **สิ่งที่ต้องเตรียม:**
 - บัญชี AWS Academy Learner Lab
@@ -25,13 +25,16 @@
 
 ---
 
-## 📝 การแบ่งบทบาทในคู่
+## ⏰ Timeline การทำ Lab
 
-| คู่ที่ 1 (Driver) | คู่ที่ 2 (Navigator) |
-|------------------|---------------------|
-| ควบคุมหน้าจอ/พิมพ์คำสั่ง | อ่านคู่มือ/ตรวจสอบความถูกต้อง |
-| รัน commands | จดบันทึกผลลัพธ์ |
-| **สลับบทบาททุก 30 นาที** | **สลับบทบาททุก 30 นาที** |
+| เวลา | กิจกรรม | รายละเอียด |
+|------|---------|------------|
+| 0:00-0:30 | Setup EC2 & Connect | สร้าง Instance และเชื่อมต่อ |
+| 0:30-1:00 | System Health & Users | ตรวจสอบระบบและจัดการผู้ใช้ |
+| 1:00-1:30 | Logs & Monitoring | วิเคราะห์ logs และ monitoring |
+| 1:30-2:00 | Services & Automation | จัดการ services และ cron |
+| 2:00-2:30 | Backup & Security | สำรองข้อมูลและความปลอดภัย |
+| 2:30-3:00 | Challenges & Submit | ทำ challenges และส่งงาน |
 
 ---
 
@@ -58,24 +61,34 @@
 
 | หัวข้อ | ค่าที่ต้องกรอก |
 |--------|--------------|
-| **Name** | `pair[เลขกลุ่ม]-ubuntu-admin` <br>เช่น `pair01-ubuntu-admin` |
+| **Name** | `std[รหัสนักศึกษา]-ubuntu` <br>เช่น `std6401001-ubuntu` |
 | **OS Image** | คลิก **Ubuntu** → เลือก **Ubuntu Server 24.04 LTS** |
 | **Instance type** | `t3.micro` (Free tier eligible) |
-| **Key pair** | คลิก **Create new key pair** <br>- Name: `pair[เลขกลุ่ม]-key` <br>- Type: **RSA** <br>- Format: **.pem** (Mac/Linux) หรือ **.ppk** (Windows) <br>→ **ดาวน์โหลดและเก็บไว้ให้ดี!** |
+| **Key pair** | คลิก **Create new key pair** <br>- Name: `std[รหัส]-key` <br>- Type: **RSA** <br>- Format: **.pem** (Mac/Linux) หรือ **.ppk** (Windows) <br>→ **ดาวน์โหลดและเก็บไว้ให้ดี!** |
 
-### 2.3 Network Settings
+### 2.3 Network Settings และ Configure Storage
 
+**Network Settings:**
 ```
-✅ ติ๊ก "Allow SSH traffic from" → เลือก "My IP"
+✅ ติ๊ก "Allow SSH traffic from" → เลือก "Anywhere"
 ✅ ติ๊ก "Allow HTTP traffic from the internet"
 ✅ ติ๊ก "Allow HTTPS traffic from the internet"
 ```
 
-### 2.4 Configure Storage (ไม่ต้องเปลี่ยน)
+**Configure Storage:**
+```
+เปลี่ยนจาก 8 เป็น 30 GiB
+(GiB = Gibibyte = 2^30 bytes)
+```
 
-ปล่อยค่า Storage เป็น default (8 GiB gp3)
+💡 **เหตุผลที่ใช้ 30 GB:**
+- Docker images ใช้พื้นที่มาก (~2-5 GB)
+- Log files สะสมเร็ว
+- Backup files ต้องการพื้นที่
+- Multiple users และ home directories
+- ฝึกทำ Lab ได้สะดวกไม่ต้องกังวลพื้นที่เต็ม
 
-### 2.5 Launch และรอ
+### 2.4 Launch และรอ
 
 1. คลิก **Launch instance**
 2. คลิก **View all instances**
@@ -106,10 +119,10 @@
 ### Option C: ใช้ Terminal (Mac/Linux)
 ```bash
 # ตั้งสิทธิ์ key file
-chmod 400 pair01-key.pem
+chmod 400 std6401001-key.pem
 
 # เชื่อมต่อ
-ssh -i pair01-key.pem ubuntu@[Public-IP]
+ssh -i std6401001-key.pem ubuntu@[Public-IP]
 ```
 
 ---
@@ -164,7 +177,7 @@ sudo systemctl start docker nginx
 sudo usermod -aG docker ubuntu
 
 # Set hostname
-sudo hostnamectl set-hostname pair-admin-server
+sudo hostnamectl set-hostname student-admin-server
 
 # Verify setup
 echo "=== Setup Complete ==="
@@ -190,8 +203,6 @@ sudo systemctl is-active nginx docker
 # ส่วนที่ 2: Daily Admin Tasks (2 ชั่วโมง)
 
 ## 📊 Task 1: System Health Check (20 นาที)
-
-**บทบาท:** Driver รันคำสั่ง, Navigator จดบันทึกผล
 
 ### 1.1 ตรวจสอบข้อมูลพื้นฐาน
 
@@ -252,22 +263,20 @@ sudo chmod +x /opt/scripts/health_check.sh
 sudo /opt/scripts/health_check.sh
 ```
 
-**📝 Navigator:** บันทึกผลลัพธ์ในตาราง
+**📝 บันทึกผลลัพธ์:**
 
 | ข้อมูล | ค่าที่ได้ |
 |--------|----------|
-| Hostname | |
-| OS Version | |
-| Uptime | |
-| Disk Usage | |
-| Memory Usage | |
-| Services Running | |
+| Hostname | _________________ |
+| OS Version | _________________ |
+| Uptime | _________________ |
+| Disk Usage | _________________ |
+| Memory Usage | _________________ |
+| Services Running | _________________ |
 
 ---
 
 ## 👥 Task 2: User Management (25 นาที)
-
-**🔄 สลับบทบาท:** Navigator เป็น Driver
 
 ### 2.1 ตรวจสอบ users ที่มีอยู่
 
@@ -339,19 +348,17 @@ ls -la /shared/admins/
 exit
 ```
 
-**📝 Navigator:** บันทึกตาราง permissions
+**📝 บันทึกตาราง permissions:**
 
 | User | Groups | Can Access | Cannot Access |
 |------|--------|------------|---------------|
-| alice | | | |
-| bob | | | |
-| charlie | | | |
+| alice | _________________ | _________________ | _________________ |
+| bob | _________________ | _________________ | _________________ |
+| charlie | _________________ | _________________ | _________________ |
 
 ---
 
-## 🔍 Task 3: Log Analysis & Monitoring (25 นาที)
-
-**บทบาท:** ทำงานพร้อมกัน
+## 🔍 Task 3: Log Analysis & Monitoring (30 นาที)
 
 ### 3.1 ตรวจสอบ System Logs
 
@@ -412,14 +419,6 @@ sudo /opt/scripts/log_analyzer.sh
 # Monitor processes
 htop                      # กด F10 เพื่อออก
 
-# Monitor disk I/O (ถ้ามี)
-sudo apt install -y iotop
-sudo iotop -o            # Ctrl+C เพื่อออก
-
-# Monitor network
-sudo apt install -y nethogs
-sudo nethogs             # Ctrl+C เพื่อออก
-
 # Create monitoring dashboard script
 sudo nano /opt/scripts/monitor.sh
 ```
@@ -448,14 +447,12 @@ done
 ```bash
 sudo chmod +x /opt/scripts/monitor.sh
 # รันสักครู่แล้ว Ctrl+C
-sudo /opt/scripts/monitor.sh
+timeout 10 sudo /opt/scripts/monitor.sh
 ```
 
 ---
 
 ## 🔧 Task 4: Service Management (20 นาที)
-
-**🔄 สลับบทบาทอีกครั้ง**
 
 ### 4.1 จัดการ Web Server
 
@@ -474,7 +471,7 @@ sudo nano /var/www/html/index.html
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Server - Pair [NUMBER]</title>
+    <title>Admin Server - Student [รหัสนักศึกษา]</title>
     <style>
         body { 
             font-family: Arial; 
@@ -487,17 +484,20 @@ sudo nano /var/www/html/index.html
             background: rgba(255,255,255,0.1);
             padding: 30px;
             border-radius: 15px;
+            max-width: 600px;
+            margin: 0 auto;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🐧 Linux Admin Training Server</h1>
-        <h2>Pair: [YOUR_NUMBER]</h2>
+        <h2>Student ID: [รหัสนักศึกษา]</h2>
+        <p>Name: [ชื่อ-นามสกุล]</p>
         <p>Server Time: <span id="time"></span></p>
         <hr>
-        <h3>System Info</h3>
-        <p>Hostname: <?php echo gethostname(); ?></p>
+        <h3>System Information</h3>
+        <p>Ubuntu 24.04 LTS | nginx Web Server</p>
     </div>
     <script>
         setInterval(function() {
@@ -542,6 +542,7 @@ sudo crontab -e
 # Save และออก (Ctrl+X, Y, Enter)
 
 # รอ 5 นาที แล้วตรวจสอบ
+sleep 300
 ls -la /var/log/custom/
 ```
 
@@ -690,7 +691,7 @@ sudo ss -tulpn | grep LISTEN
 
 echo ""
 echo "=== Users with sudo access ==="
-grep -Po '^sudo:.*:\K.*$' /etc/group
+grep -Po '^sudo:.*:\K.* /etc/group
 
 echo ""
 echo "=== Failed login attempts (last 24h) ==="
@@ -714,10 +715,13 @@ sudo /opt/scripts/security_audit.sh
 
 # ส่วนที่ 3: Challenge Tasks (30 นาที)
 
-## 🏆 Mini Challenges (ทำเป็นคู่)
+## 🏆 Individual Challenges
 
-### Challenge 1: Performance Troubleshooting
+### Challenge 1: Performance Troubleshooting (10 นาที)
 ```bash
+# Install stress tool
+sudo apt-get install -y stress
+
 # สร้าง high CPU load
 stress --cpu 2 --timeout 30s &
 
@@ -730,7 +734,7 @@ ps aux --sort=-%cpu | head
 killall stress
 ```
 
-### Challenge 2: Disk Space Management
+### Challenge 2: Disk Space Management (10 นาที)
 ```bash
 # สร้างไฟล์ใหญ่
 dd if=/dev/zero of=/tmp/bigfile bs=100M count=5
@@ -743,13 +747,39 @@ find /tmp -type f -size +100M
 rm /tmp/bigfile
 ```
 
-### Challenge 3: Automated Report
+### Challenge 3: Automated Daily Report (10 นาที)
 สร้าง script ที่รวมทุก health checks:
 
 ```bash
 sudo nano /opt/scripts/daily_report.sh
-# รวม health_check, log_analyzer, security_audit
-# ส่งผลไปที่ /var/log/custom/daily_report.txt
+```
+
+```bash
+#!/bin/bash
+REPORT_FILE="/var/log/custom/daily_report_$(date +%Y%m%d).txt"
+
+echo "=== Daily System Report ===" > $REPORT_FILE
+echo "Generated: $(date)" >> $REPORT_FILE
+echo "" >> $REPORT_FILE
+
+echo "=== Health Check ===" >> $REPORT_FILE
+/opt/scripts/health_check.sh >> $REPORT_FILE
+echo "" >> $REPORT_FILE
+
+echo "=== Security Audit ===" >> $REPORT_FILE
+/opt/scripts/security_audit.sh >> $REPORT_FILE
+echo "" >> $REPORT_FILE
+
+echo "=== Backup Status ===" >> $REPORT_FILE
+ls -lah /var/backups/daily/backup_*.tar.gz | tail -5 >> $REPORT_FILE
+
+echo "Report saved to: $REPORT_FILE"
+cat $REPORT_FILE
+```
+
+```bash
+sudo chmod +x /opt/scripts/daily_report.sh
+sudo /opt/scripts/daily_report.sh
 ```
 
 ---
@@ -758,91 +788,208 @@ sudo nano /opt/scripts/daily_report.sh
 
 ## สิ่งที่ต้องส่ง:
 
-### 1. Screenshots (ทั้งคู่)
+### 1. Screenshots (10 รูป)
 - [ ] EC2 Instance running
-- [ ] SSH connection successful
+- [ ] SSH connection successful  
 - [ ] Health check script output
 - [ ] User management (ls -la /shared/)
-- [ ] Web page ที่แก้ไขแล้ว
-- [ ] Firewall status
+- [ ] Log analyzer output
+- [ ] Web page ที่แก้ไขแล้ว (จาก browser)
+- [ ] Monitoring dashboard
+- [ ] Firewall status (ufw status)
 - [ ] Backup files list
+- [ ] Daily report output
 
-### 2. Scripts (upload ไฟล์)
-- [ ] `/opt/scripts/health_check.sh`
-- [ ] `/opt/scripts/log_analyzer.sh`
-- [ ] `/opt/scripts/monitor.sh`
-- [ ] `/opt/scripts/backup.sh`
-- [ ] `/opt/scripts/security_audit.sh`
+### 2. Scripts (upload ไฟล์ .sh)
+รวมไฟล์ scripts ทั้งหมดในไฟล์ zip:
+```bash
+# สร้าง zip file
+cd ~
+zip -r scripts_[รหัสนักศึกษา].zip /opt/scripts/*.sh
+
+# ตรวจสอบไฟล์ใน zip
+unzip -l scripts_[รหัสนักศึกษา].zip
+
+# Download ผ่าน MobaXterm หรือ scp
+scp -i std[รหัส]-key.pem ubuntu@[IP]:~/scripts_*.zip .
+```
+
+**Scripts ที่ต้องมี:**
+- [ ] `health_check.sh`
+- [ ] `log_analyzer.sh`
+- [ ] `monitor.sh`
+- [ ] `backup.sh`
+- [ ] `security_audit.sh`
+- [ ] `daily_report.sh`
 
 ### 3. รายงาน (1-2 หน้า)
-```markdown
-# Lab Report - Pair [NUMBER]
+สร้างไฟล์ **report_[รหัสนักศึกษา].md** ตามรูปแบบนี้:
 
-## สมาชิกกลุ่ม
-1. ชื่อ: _____ รหัส: _____
-2. ชื่อ: _____ รหัส: _____
+```markdown
+# Lab Report - Linux System Administration
+
+## ข้อมูลนักศึกษา
+- ชื่อ-นามสกุล: _____________________
+- รหัสนักศึกษา: _____________________
+- วันที่ทำ Lab: _____________________
 
 ## Instance Information
 - Instance ID: i-xxxxxxxxxx
 - Public IP: xx.xx.xx.xx
 - Instance Type: t3.micro
+- AMI: Ubuntu Server 24.04 LTS
+- Storage: 30 GiB
 
-## ปัญหาที่พบและวิธีแก้
-1. ปัญหา: _____
-   แก้ไข: _____
+## สรุปงานที่ทำ
+### Task 1: System Health Check
+- [อธิบายสิ่งที่ทำและผลลัพธ์]
+
+### Task 2: User Management
+- [อธิบายการจัดการ users และ permissions]
+
+### Task 3: Log Analysis
+- [อธิบายการวิเคราะห์ logs]
+
+### Task 4: Service Management
+- [อธิบายการจัดการ services]
+
+### Task 5: Backup & Recovery
+- [อธิบายระบบ backup]
+
+### Task 6: Security
+- [อธิบายการตั้งค่าความปลอดภัย]
+
+## ปัญหาที่พบและวิธีแก้ไข
+1. ปัญหา: _____________________
+   วิธีแก้: _____________________
+
+2. ปัญหา: _____________________
+   วิธีแก้: _____________________
 
 ## สิ่งที่ได้เรียนรู้
-1. _____
-2. _____
-3. _____
+1. _____________________
+2. _____________________
+3. _____________________
 
-## Feedback การทำงานคู่
-- สิ่งที่ทำได้ดี: _____
-- สิ่งที่ควรปรับปรุง: _____
+## การประยุกต์ใช้ในอนาคต
+[อธิบายว่าจะนำความรู้ไปใช้อย่างไร]
 ```
 
 ---
 
 ## 🧹 Cleanup (สำคัญ!)
 
-เมื่อเสร็จ Lab:
+### Backup ข้อมูลก่อน Cleanup:
 
 ```bash
-# 1. Backup your scripts
-tar -czf ~/scripts_backup.tar.gz /opt/scripts/
+# 1. Backup all scripts
+tar -czf ~/lab_backup_$(date +%Y%m%d).tar.gz \
+    /opt/scripts/ \
+    /var/www/html/index.html \
+    /var/backups/daily/
 
-# 2. Download via MobaXterm หรือ scp
-scp -i pair01-key.pem ubuntu@[IP]:~/scripts_backup.tar.gz .
+# 2. Download backup file
+# ผ่าน MobaXterm: ลาก file จาก panel ซ้าย
+# หรือใช้ scp:
+scp -i std[รหัส]-key.pem ubuntu@[IP]:~/lab_backup_*.tar.gz .
 ```
+
+### Stop หรือ Terminate Instance:
 
 **ใน AWS Console:**
 1. EC2 → Instances
-2. เลือก instance → Actions → Instance State → **Stop**
-3. หรือ **Terminate** ถ้าไม่ใช้แล้ว
+2. เลือก instance ของคุณ
+3. Actions → Instance State → **Stop** (หยุดชั่วคราว)
+   หรือ
+4. Actions → Instance State → **Terminate** (ลบถาวร)
+
+⚠️ **คำเตือน:**
+- **Stop** = หยุดชั่วคราว ยังเก็บข้อมูล สามารถ Start ใหม่ได้
+- **Terminate** = ลบถาวร ข้อมูลหายทั้งหมด ใช้เมื่อส่งงานเสร็จแล้ว
+
+---
+
+## 📊 เกณฑ์การประเมิน
+
+| หัวข้อ | คะแนน |
+|--------|--------|
+| Screenshots ครบถ้วน | 20% |
+| Scripts ทำงานได้ถูกต้อง | 30% |
+| รายงานละเอียดครบถ้วน | 20% |
+| Security Setup | 15% |
+| Backup & Recovery | 15% |
+| **รวม** | **100%** |
 
 ---
 
 ## 📚 Resources เพิ่มเติม
 
+### Official Documentation
 - [Ubuntu Server Guide](https://ubuntu.com/server/docs)
-- [Linux Command Reference](https://ss64.com/bash/)
 - [AWS EC2 Documentation](https://docs.aws.amazon.com/ec2/)
+- [Nginx Documentation](https://nginx.org/en/docs/)
+
+### Command References
+- [Linux Command Cheat Sheet](https://ss64.com/bash/)
+- [Cron Expression Generator](https://crontab.guru/)
+- [Vim Cheat Sheet](https://vim.rtorr.com/)
+
+### Learning Paths
+- [Linux Foundation Training](https://training.linuxfoundation.org/)
+- [AWS Training and Certification](https://aws.amazon.com/training/)
+- [Linux Journey](https://linuxjourney.com/)
 
 ---
 
-## ⚡ Quick Reference Commands
+## ⚡ Quick Command Reference
 
 | Task | Command |
 |------|---------|
+| **System Info** |  |
 | Check system info | `uname -a` |
-| View running processes | `htop` or `top` |
-| Check disk usage | `df -h` |
-| View logs | `journalctl -xe` |
-| List services | `systemctl list-units` |
-| Check network | `ss -tulpn` |
+| View distribution | `lsb_release -a` |
+| Check uptime | `uptime` |
+| **Process Management** |  |
+| View processes | `htop` or `top` |
+| Kill process | `kill [PID]` or `killall [name]` |
+| Background job | `command &` |
+| **File Management** |  |
 | Find files | `find / -name "*.log"` |
-| Monitor in real-time | `tail -f /var/log/syslog` |
+| Disk usage | `df -h` |
+| Directory size | `du -sh /path/` |
+| **User Management** |  |
+| Add user | `sudo useradd -m username` |
+| Change password | `sudo passwd username` |
+| Add to group | `sudo usermod -aG group user` |
+| **Network** |  |
+| Check ports | `ss -tulpn` |
+| Test connectivity | `ping -c 3 google.com` |
+| View IP | `ip a` |
+| **Services** |  |
+| Start service | `sudo systemctl start service` |
+| Enable on boot | `sudo systemctl enable service` |
+| Check status | `systemctl status service` |
+| **Logs** |  |
+| View system logs | `journalctl -xe` |
+| Follow log file | `tail -f /var/log/syslog` |
+| Search in logs | `grep "error" /var/log/*.log` |
 
 ---
 
-**🎯 Good luck with your Lab! Happy Learning!**
+## 🎯 Checklist ก่อนส่งงาน
+
+- [ ] Scripts ทั้ง 6 ไฟล์ทำงานได้
+- [ ] Web page แสดงข้อมูลนักศึกษา
+- [ ] Firewall และ fail2ban ทำงาน
+- [ ] Cron job ถูกตั้งค่าแล้ว
+- [ ] มี backup files อย่างน้อย 1 ไฟล์
+- [ ] Screenshots ครบ 10 รูป
+- [ ] รายงานเขียนครบทุกหัวข้อ
+- [ ] Download backup ข้อมูลแล้ว
+- [ ] Instance ถูก Stop/Terminate แล้ว
+- [ ] ส่งงานใน LMS แล้ว
+
+---
+
+**🚀 Good luck with your Lab!**
+**💪 You've got this!**
