@@ -160,9 +160,9 @@ sudo apt-get install -y \
     apache2-utils fail2ban ufw
 
 # Create test users
-sudo useradd -m -s /bin/bash alice
-sudo useradd -m -s /bin/bash bob
-sudo useradd -m -s /bin/bash charlie
+sudo adduser  alice
+sudo adduser  bob
+sudo adduser  charlie
 
 # Set passwords
 echo "alice:Pass123!" | sudo chpasswd
