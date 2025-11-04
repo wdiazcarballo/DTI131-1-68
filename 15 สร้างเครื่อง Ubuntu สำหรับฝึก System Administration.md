@@ -63,71 +63,17 @@
 | **Instance type** | `t3.micro` (Free tier eligible) |
 | **Key pair** | คลิก **Create new key pair** <br>- Name: `pair[เลขกลุ่ม]-key` <br>- Type: **RSA** <br>- Format: **.pem** (Mac/Linux) หรือ **.ppk** (Windows) <br>→ **ดาวน์โหลดและเก็บไว้ให้ดี!** |
 
-### 2.3 Network Settings และ กำหนดค่าขนาดความจุฮาร์ดดิสก์ (Configure Storage)
+### 2.3 Network Settings
 
 ```
-✅ ติ๊ก "Allow SSH traffic from" → เลือก "Anywhere"
+✅ ติ๊ก "Allow SSH traffic from" → เลือก "My IP"
 ✅ ติ๊ก "Allow HTTP traffic from the internet"
 ✅ ติ๊ก "Allow HTTPS traffic from the internet"
 ```
-สำหรับ Configure Storage เติมเลข  30 GiB (GiB ย่อมาจาก กิกะไบต์ เป็นจำนวนฐานสอง 2^30 ฺไบต์) 
-### 2.4 Advanced Details (สำคัญ!)
 
-เลื่อนลงไปที่ **Advanced details** → ช่อง **User data** → วางโค้ดนี้:
+### 2.4 Configure Storage (ไม่ต้องเปลี่ยน)
 
-```bash
-#!/bin/bash
-# Setup script สำหรับ Admin Lab
-apt-get update -y
-apt-get upgrade -y
-apt-get install -y \
-    docker.io \
-    git \
-    htop \
-    tree \
-    curl \
-    wget \
-    net-tools \
-    vim \
-    build-essential \
-    software-properties-common \
-    nginx \
-    apache2-utils \
-    fail2ban \
-    ufw
-
-# Start services
-systemctl enable docker nginx
-systemctl start docker nginx
-usermod -aG docker ubuntu
-
-# Create sample users for practice
-useradd -m -s /bin/bash alice
-useradd -m -s /bin/bash bob
-useradd -m -s /bin/bash charlie
-echo "alice:Pass123!" | chpasswd
-echo "bob:Pass123!" | chpasswd
-echo "charlie:Pass123!" | chpasswd
-
-# Create admin directories
-mkdir -p /var/backups/daily
-mkdir -p /var/log/custom
-mkdir -p /opt/scripts
-
-# Set hostname
-hostnamectl set-hostname pair-admin-server
-
-# Create welcome message
-cat << 'WELCOME' > /etc/motd
-====================================
-   Linux Admin Training Server
-   Pair: [YOUR_PAIR_NUMBER]
-   Ready for System Administration!
-====================================
-WELCOME
-
-echo "Setup completed at $(date)" > /var/log/setup.log
-```
+ปล่อยค่า Storage เป็น default (8 GiB gp3)
 
 ### 2.5 Launch และรอ
 
@@ -164,6 +110,79 @@ chmod 400 pair01-key.pem
 
 # เชื่อมต่อ
 ssh -i pair01-key.pem ubuntu@[Public-IP]
+```
+
+---
+
+## 🛠️ ขั้นที่ 4: Manual Setup (จำเป็น! - 10 นาที)
+
+**⚠️ หมายเหตุ:** User Data อาจไม่ทำงานใน AWS Academy ต้อง setup manual
+
+### 4.1 ตรวจสอบว่า setup script ทำงานหรือไม่
+
+```bash
+# Check if users exist
+ls /home/
+
+# ถ้าเห็นแค่ 'ubuntu' แสดงว่า script ไม่ทำงาน
+# ถ้าเห็น alice, bob, charlie ข้ามไปทำ Section 2 ได้เลย
+```
+
+### 4.2 ถ้า script ไม่ทำงาน - รัน setup manual
+
+**คัดลอกและรันคำสั่งนี้ทั้งหมด:**
+
+```bash
+# Update system
+sudo apt-get update -y
+
+# Install required packages (อาจใช้เวลา 2-3 นาที)
+sudo apt-get install -y \
+    docker.io git htop tree curl wget \
+    net-tools vim build-essential \
+    software-properties-common nginx \
+    apache2-utils fail2ban ufw
+
+# Create test users
+sudo useradd -m -s /bin/bash alice
+sudo useradd -m -s /bin/bash bob
+sudo useradd -m -s /bin/bash charlie
+
+# Set passwords
+echo "alice:Pass123!" | sudo chpasswd
+echo "bob:Pass123!" | sudo chpasswd
+echo "charlie:Pass123!" | sudo chpasswd
+
+# Create directories
+sudo mkdir -p /var/backups/daily
+sudo mkdir -p /var/log/custom
+sudo mkdir -p /opt/scripts
+
+# Start services
+sudo systemctl enable docker nginx
+sudo systemctl start docker nginx
+sudo usermod -aG docker ubuntu
+
+# Set hostname
+sudo hostnamectl set-hostname pair-admin-server
+
+# Verify setup
+echo "=== Setup Complete ==="
+echo "Users created:"
+ls /home/
+echo ""
+echo "Services status:"
+sudo systemctl is-active nginx docker
+```
+
+### 4.3 ตรวจสอบความพร้อม
+
+```bash
+# ต้องเห็นผลลัพธ์แบบนี้:
+# Users: alice bob charlie ubuntu
+# Services: active active
+
+# ถ้าไม่เห็น alice, bob, charlie ให้รันคำสั่งใน 4.2 อีกครั้ง
 ```
 
 ---
