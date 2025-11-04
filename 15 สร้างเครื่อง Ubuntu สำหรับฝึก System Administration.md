@@ -63,14 +63,14 @@
 | **Instance type** | `t3.micro` (Free tier eligible) |
 | **Key pair** | คลิก **Create new key pair** <br>- Name: `pair[เลขกลุ่ม]-key` <br>- Type: **RSA** <br>- Format: **.pem** (Mac/Linux) หรือ **.ppk** (Windows) <br>→ **ดาวน์โหลดและเก็บไว้ให้ดี!** |
 
-### 2.3 Network Settings
+### 2.3 Network Settings และ กำหนดค่าขนาดความจุฮาร์ดดิสก์ (Configure Storage)
 
 ```
-✅ ติ๊ก "Allow SSH traffic from" → เลือก "My IP"
+✅ ติ๊ก "Allow SSH traffic from" → เลือก "Anywhere"
 ✅ ติ๊ก "Allow HTTP traffic from the internet"
 ✅ ติ๊ก "Allow HTTPS traffic from the internet"
 ```
-
+สำหรับ Configure Storage เติมเลข  30 GiB (GiB ย่อมาจาก กิกะไบต์ เป็นจำนวนฐานสอง 2^30 ฺไบต์) 
 ### 2.4 Advanced Details (สำคัญ!)
 
 เลื่อนลงไปที่ **Advanced details** → ช่อง **User data** → วางโค้ดนี้:
