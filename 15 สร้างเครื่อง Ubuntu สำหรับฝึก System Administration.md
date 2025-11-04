@@ -149,6 +149,9 @@ ls /home/
 # Update system
 sudo apt-get update -y
 
+sudo apt-get upgrade
+
+
 # Install required packages (อาจใช้เวลา 2-3 นาที)
 sudo apt-get install -y \
     docker.io git htop tree curl wget \
