@@ -1,263 +1,829 @@
-## ☁️ คู่มือสร้างเครื่อง Ubuntu สำหรับฝึก System Administration ด้วย AWS CloudFormation
-
-**วิชา:** DTI131 – Introduction to Cloud Computing
-**จุดประสงค์:** เพื่อให้นักศึกษาได้สร้างเครื่องเสมือน (Virtual Machine – VM) บนระบบคลาวด์ด้วย AWS และฝึกใช้คำสั่งดูแลระบบเหมือนผู้ดูแลเซิร์ฟเวอร์จริง
+# คู่มือปฏิบัติการ: Linux System Admin บน AWS Academy
+## 👥 กิจกรรมคู่ (Pair Activity) - 3 ชั่วโมง
 
 ---
 
-### 🧩 ก่อนเริ่ม – เข้าใจคำศัพท์สำคัญ
+## 📋 ข้อมูลทั่วไป
 
-| คำศัพท์                             | ความหมาย                                                                                                                                                   |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AWS CloudFormation**              | บริการที่ช่วย “สร้างระบบทั้งหมดแบบอัตโนมัติ” ด้วยไฟล์สคริปต์ที่เรียกว่า *Template* (เป็นไฟล์ `.yaml` หรือ `.json`) — เหมือนพิมพ์เขียวในการสร้างเซิร์ฟเวอร์ |
-| **Stack**                           | กลุ่มของทรัพยากร (EC2, Security Group, Role ฯลฯ) ที่ถูกสร้างจาก Template เดียวกัน ถ้าลบ Stack ระบบจะลบทุกอย่างที่เกี่ยวข้องให้โดยอัตโนมัติ                 |
-| **EC2 (Elastic Compute Cloud)**     | เครื่องคอมพิวเตอร์เสมือน (Virtual Machine) ที่เราจะใช้เป็น “เครื่องฝึก System Admin”                                                                       |
-| **Key Pair (.pem)**                 | กุญแจเข้าระบบ ใช้แทนรหัสผ่านในการเชื่อมต่อเข้าเครื่องผ่าน SSH                                                                                              |
-| **Subnet**                          | เครือข่ายย่อยภายในระบบ AWS VPC ที่เป็นที่อยู่ของเครื่อง EC2 ของเรา                                                                                         |
-| **AllowedSSH (CIDR)**               | ช่วง IP ที่อนุญาตให้เชื่อมต่อผ่าน SSH เช่น `1.2.3.4/32` หมายถึงให้เฉพาะ IP เครื่องของเราสามารถเข้าได้                                                      |
-| **SSM Agent (AWS Systems Manager)** | เครื่องมือที่ให้เราควบคุม EC2 ผ่านหน้าเว็บโดยไม่ต้องเปิดพอร์ต 22                                                                                           |
+**วัตถุประสงค์:** ฝึกทักษะ System Administrator แบบ hands-on ผ่าน AWS EC2  
+**รูปแบบ:** ทำงานเป็นคู่ (2 คน/กลุ่ม)  
+**ระยะเวลา:** 3 ชั่วโมง  
+**สิ่งที่ต้องเตรียม:**
+- บัญชี AWS Academy Learner Lab
+- โปรแกรม MobaXterm หรือ Terminal
+- เอกสารนี้
 
 ---
 
-### 🚀 ขั้นตอนการใช้งาน (How to Use – ฉบับอธิบาย)
+## 🎯 Learning Outcomes
+หลังจบ Lab นี้ นักศึกษาจะสามารถ:
+1. ✅ สร้างและจัดการ EC2 Instance บน AWS
+2. ✅ ปฏิบัติงาน System Admin พื้นฐานประจำวัน
+3. ✅ จัดการ users, permissions และ services
+4. ✅ ตรวจสอบ system health และแก้ปัญหาเบื้องต้น
+5. ✅ เขียน automation scripts สำหรับงานประจำ
 
-#### 1️⃣ ดาวน์โหลดไฟล์ Template
-* สร้างโฟลเดอร์ทำงาน ที่เครื่องตัวเอง เช่น linux-admin
-* เปิดโปรแกรม vscode และ เปิดไปที่โฟลเดอร์นั้น
-* สร้างไฟล์ใหม่ ชื่อ `ubuntu-admin-lab.yaml`
-* ไฟล์นี้คือ “สคริปต์คำสั่งอัตโนมัติ” ที่ AWS จะอ่านเพื่อสร้างเครื่อง Ubuntu พร้อมติดตั้งเครื่องมือพื้นฐาน เช่น Docker, Git, Htop
-* คิดเสียว่าเป็น “สูตรลับการสร้างเครื่องเหมือนกันทุกเครื่อง”
+---
 
-```yml
-AWSTemplateFormatVersion: '2010-09-09'
-Description: Standard Ubuntu 24.04 LTS admin VM for AWS Academy Learner Lab (system admin practice).
+## 📝 การแบ่งบทบาทในคู่
 
-Parameters:
-  KeyName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: Existing EC2 KeyPair for SSH login (create one in EC2 > Key Pairs).
-  InstanceType:
-    Type: String
-    Default: t3.micro
-    AllowedValues:
-      - t3.micro
-      - t3.small
-      - t3a.micro
-      - t3a.small
-      - t2.micro
-    Description: Instance size (use micro to conserve budget).
-  SubnetId:
-    Type: 'AWS::EC2::Subnet::Id'
-    Description: Select a default VPC subnet in your account/region.
-  AllowedSSH:
-    Type: String
-    Default: 0.0.0.0/0
-    Description: CIDR allowed to SSH (use your IP/32 if possible).
-  StudentTag:
-    Type: String
-    Default: student
-    Description: A name or ID to tag the resources.
+| คู่ที่ 1 (Driver) | คู่ที่ 2 (Navigator) |
+|------------------|---------------------|
+| ควบคุมหน้าจอ/พิมพ์คำสั่ง | อ่านคู่มือ/ตรวจสอบความถูกต้อง |
+| รัน commands | จดบันทึกผลลัพธ์ |
+| **สลับบทบาททุก 30 นาที** | **สลับบทบาททุก 30 นาที** |
 
-  LatestUbuntuAmiId:
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+---
 
-Resources:
-  InstanceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-      Path: /
-      Tags:
-        - Key: Owner
-          Value: !Ref StudentTag
+# ส่วนที่ 1: สร้าง EC2 Instance (30 นาที)
 
-  InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Roles: [ !Ref InstanceRole ]
-      Path: /
+## 📍 ขั้นที่ 1: เข้า AWS Academy Learner Lab
 
-  SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow SSH access
-      VpcId: !Ref 'AWS::NoValue'
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: !Ref AllowedSSH
-      Tags:
-        - Key: Name
-          Value: !Sub '${StudentTag}-ubuntu-sg'
+1. เปิด browser ไปที่ AWS Academy
+2. เข้าสู่ course **DTI 131**
+3. คลิก **Modules** → **Learner Lab**
+4. คลิก **Start Lab** (รอสถานะเป็น 🟢)
+5. คลิก **AWS** เพื่อเปิด Console
 
-  AdminInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !Ref LatestUbuntuAmiId
-      InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref InstanceProfile
-      KeyName: !Ref KeyName
-      SubnetId: !Ref SubnetId
-      SecurityGroupIds: [ !Ref SecurityGroup ]
-      Tags:
-        - Key: Name
-          Value: !Sub '${StudentTag}-ubuntu-admin'
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          set -eux
-          apt-get update -y
-          apt-get install -y docker.io git htop build-essential unzip curl
-          systemctl enable docker
-          systemctl start docker
-          usermod -aG docker ubuntu
-          echo 'export HISTTIMEFORMAT="%F %T "' >> /home/ubuntu/.bashrc
-          echo 'alias ll="ls -alF"' >> /home/ubuntu/.bashrc
-          hostnamectl set-hostname ${StudentTag}-ubuntu-admin
-          snap install amazon-ssm-agent --classic
-          systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-          systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
+## 🚀 ขั้นที่ 2: สร้าง Ubuntu Server
 
-Outputs:
-  InstanceId:
-    Description: EC2 instance ID
-    Value: !Ref AdminInstance
-  PublicIP:
-    Description: Public IP of the instance
-    Value: !GetAtt AdminInstance.PublicIp
-  ConnectTip:
-    Description: Tip
-    Value: 'Use EC2 Instance Connect (browser) or SSH with your key pair.'
+### 2.1 เริ่มสร้าง Instance
 
 ```
+1. ค้นหา "EC2" ในช่องค้นหา → เปิด EC2 Dashboard
+2. คลิกปุ่ม "Launch Instance" (สีส้ม)
+```
 
----
+### 2.2 กรอกข้อมูล Instance
 
-#### 2️⃣ เข้าสู่ระบบ AWS Academy Learner Lab
+| หัวข้อ | ค่าที่ต้องกรอก |
+|--------|--------------|
+| **Name** | `pair[เลขกลุ่ม]-ubuntu-admin` <br>เช่น `pair01-ubuntu-admin` |
+| **OS Image** | คลิก **Ubuntu** → เลือก **Ubuntu Server 24.04 LTS** |
+| **Instance type** | `t3.micro` (Free tier eligible) |
+| **Key pair** | คลิก **Create new key pair** <br>- Name: `pair[เลขกลุ่ม]-key` <br>- Type: **RSA** <br>- Format: **.pem** (Mac/Linux) หรือ **.ppk** (Windows) <br>→ **ดาวน์โหลดและเก็บไว้ให้ดี!** |
 
-1. เปิด AWS Academy → เข้าสู่ **Learner Lab**
-2. คลิกปุ่ม **Start Lab** เพื่อเปิดสิทธิ์ใช้งาน AWS
-3. คลิก **AWS** เพื่อเข้าสู่ **AWS Console** (หน้าหลักของ AWS)
+### 2.3 Network Settings
 
----
+```
+✅ ติ๊ก "Allow SSH traffic from" → เลือก "My IP"
+✅ ติ๊ก "Allow HTTP traffic from the internet"
+✅ ติ๊ก "Allow HTTPS traffic from the internet"
+```
 
-#### 3️⃣ เปิดบริการ CloudFormation
+### 2.4 Advanced Details (สำคัญ!)
 
-* ในช่องค้นหาด้านบนของ Console พิมพ์ว่า **CloudFormation** แล้วคลิกเข้าไป
-* CloudFormation คือบริการที่ช่วยเราสร้างทรัพยากรทั้งหมดด้วยไฟล์ Template เดียว
-
----
-
-#### 4️⃣ เริ่มสร้าง Stack ใหม่
-
-1. คลิกปุ่ม **Create stack**
-2. เลือก **With new resources (standard)**
-
-   > หมายถึงเราจะสร้างทรัพยากรใหม่ทั้งหมดจาก Template
-
----
-
-#### 5️⃣ อัปโหลด Template
-
-1. เลือก “**Upload a template file**”
-2. คลิก **Choose file** แล้วเลือกไฟล์ `.yaml` ที่อาจารย์ให้
-3. คลิก **Next**
-
----
-
-#### 6️⃣ กรอกค่าพารามิเตอร์ (Parameters)
-
-ในขั้นตอนนี้ CloudFormation จะถามค่าที่ต้องใช้ในสคริปต์ เช่น Key, Subnet, ชื่อผู้ใช้ ฯลฯ
-
-| ชื่อช่อง       | คำอธิบาย                                                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **KeyName**    | เลือกหรือสร้าง Key Pair ใหม่ (จำเป็น) – ใช้สำหรับ SSH เข้าระบบ (ดาวน์โหลดไว้ให้ดี ไฟล์ `.pem` ใช้ต่อไม่ได้ถ้าหาย!)                               |
-| **SubnetId**   | เลือก Subnet จาก Default VPC (คือเครือข่ายภายในที่ AWS เตรียมไว้ให้)                                                                             |
-| **AllowedSSH** | ใส่ IP เครื่องของเราในรูปแบบ `x.x.x.x/32` เพื่อให้เฉพาะเราสามารถเชื่อมต่อได้ (เช่น `203.150.22.15/32`) ถ้าไม่แน่ใจใช้ค่าเริ่มต้น `0.0.0.0/0` ได้ |
-| **StudentTag** | ใส่ชื่อหรือลำดับของตน เช่น `DTI131-Student01` เพื่อให้อาจารย์ดูได้ว่าเครื่องใครเป็นใคร                                                           |
-
-จากนั้นคลิก **Next → Next → Create stack**
-
----
-
-#### 7️⃣ รอให้ Stack สร้างเสร็จ
-
-* ใช้เวลาประมาณ **2–3 นาที**
-* เมื่อสถานะเป็น **CREATE_COMPLETE** หมายความว่าเครื่องถูกสร้างเรียบร้อยแล้ว
-* CloudFormation จะสร้างให้ครบทุกอย่าง (Instance, Security Group, Role, ฯลฯ)
-
----
-
-#### 8️⃣ ตรวจสอบเครื่องที่สร้างใน EC2
-
-1. ไปที่บริการ **EC2**
-2. คลิก **Instances → Running Instances**
-3. จะเห็นเครื่องใหม่ชื่อคล้ายกับที่ตั้งไว้ เช่น `DTI131-Student01-ubuntu-admin`
-4. สถานะควรเป็น **Running**
-
----
-
-#### 9️⃣ การเชื่อมต่อเข้าเครื่อง (Connect to your VM)
-
-🟢 **วิธีที่ 1: ใช้ EC2 Instance Connect (ผ่านเว็บเบราว์เซอร์)**
-เหมาะกับคนที่ยังไม่คุ้น SSH
-
-* เลือก instance → ปุ่ม **Connect** → แท็บ *EC2 Instance Connect*
-* คลิก **Connect** อีกครั้ง → จะได้หน้าต่าง Terminal บนเบราว์เซอร์
-
-🟢 **วิธีที่ 2: ใช้โปรแกรม SSH (MobaxTerm, PuTTY, หรือ Terminal)**
-ใช้คำสั่งตัวอย่าง:
+เลื่อนลงไปที่ **Advanced details** → ช่อง **User data** → วางโค้ดนี้:
 
 ```bash
-ssh -i "mykey.pem" ubuntu@<Public-IP>
+#!/bin/bash
+# Setup script สำหรับ Admin Lab
+apt-get update -y
+apt-get upgrade -y
+apt-get install -y \
+    docker.io \
+    git \
+    htop \
+    tree \
+    curl \
+    wget \
+    net-tools \
+    vim \
+    build-essential \
+    software-properties-common \
+    nginx \
+    apache2-utils \
+    fail2ban \
+    ufw
+
+# Start services
+systemctl enable docker nginx
+systemctl start docker nginx
+usermod -aG docker ubuntu
+
+# Create sample users for practice
+useradd -m -s /bin/bash alice
+useradd -m -s /bin/bash bob
+useradd -m -s /bin/bash charlie
+echo "alice:Pass123!" | chpasswd
+echo "bob:Pass123!" | chpasswd
+echo "charlie:Pass123!" | chpasswd
+
+# Create admin directories
+mkdir -p /var/backups/daily
+mkdir -p /var/log/custom
+mkdir -p /opt/scripts
+
+# Set hostname
+hostnamectl set-hostname pair-admin-server
+
+# Create welcome message
+cat << 'WELCOME' > /etc/motd
+====================================
+   Linux Admin Training Server
+   Pair: [YOUR_PAIR_NUMBER]
+   Ready for System Administration!
+====================================
+WELCOME
+
+echo "Setup completed at $(date)" > /var/log/setup.log
 ```
 
-> `<Public-IP>` คือ IP Address ที่แสดงในหน้า EC2
+### 2.5 Launch และรอ
+
+1. คลิก **Launch instance**
+2. คลิก **View all instances**
+3. รอสถานะเป็น **Running** (✅ 2/2 checks passed)
+4. ✅ **จด Instance ID และ Public IP ไว้**
 
 ---
 
-#### 10️⃣ ปิดเครื่องเมื่อฝึกเสร็จ
+## 🔌 ขั้นที่ 3: เชื่อมต่อกับ Server
 
-เพื่อประหยัดงบประมาณใน Learner Lab:
+### Option A: ใช้ EC2 Instance Connect (ง่ายสุด)
+```
+1. เลือก Instance → คลิก "Connect"
+2. เลือก tab "EC2 Instance Connect"
+3. Username: ubuntu (อัตโนมัติ)
+4. คลิก "Connect"
+```
 
-1. กลับไปหน้า EC2
-2. เลือกเครื่องของเรา
-3. คลิก **Instance state → Stop instance**
+### Option B: ใช้ MobaXterm (Windows)
+```
+1. เปิด MobaXterm → Session → SSH
+2. Remote host: [Public IP ของคุณ]
+3. Username: ubuntu
+4. Advanced → Use private key → เลือกไฟล์ .pem
+5. คลิก OK
+```
 
-หากต้องกลับมาใช้อีก สามารถ **Start instance** ได้ใหม่โดยข้อมูลยังอยู่ครบ
+### Option C: ใช้ Terminal (Mac/Linux)
+```bash
+# ตั้งสิทธิ์ key file
+chmod 400 pair01-key.pem
+
+# เชื่อมต่อ
+ssh -i pair01-key.pem ubuntu@[Public-IP]
+```
 
 ---
 
-### 🎯 ผลลัพธ์ที่นักศึกษาจะได้รับ
+# ส่วนที่ 2: Daily Admin Tasks (2 ชั่วโมง)
 
-* เครื่อง Ubuntu 24.04 LTS ที่ติดตั้งพร้อมใช้งาน
-* สิทธิ์เต็มในการทดลองคำสั่งระบบ เช่น
+## 📊 Task 1: System Health Check (20 นาที)
 
-  * `sudo apt update` / `sudo apt install`
-  * `useradd`, `chmod`, `systemctl`, `journalctl`
-  * การตั้งค่า Docker, network, และบริการต่าง ๆ
-* สภาพแวดล้อมเหมือนกันทุกคน → อาจารย์สามารถตรวจงานได้ง่ายและเทียบผลได้ตรงกัน
+**บทบาท:** Driver รันคำสั่ง, Navigator จดบันทึกผล
+
+### 1.1 ตรวจสอบข้อมูลพื้นฐาน
+
+```bash
+# ตรวจสอบระบบ
+hostname
+uname -a
+lsb_release -a
+uptime
+date
+
+# ตรวจสอบทรัพยากร
+df -h                    # disk usage
+free -h                  # memory usage
+top                      # กด 'q' เพื่อออก
+htop                     # กด 'q' เพื่อออก
+
+# ตรวจสอบ network
+ip a                     # network interfaces
+ss -tulpn               # listening ports
+systemctl status nginx   # web server status
+```
+
+### 1.2 สร้าง Health Check Script
+
+```bash
+# สร้าง script
+sudo nano /opt/scripts/health_check.sh
+```
+
+วางโค้ดนี้:
+
+```bash
+#!/bin/bash
+echo "=== System Health Report ==="
+echo "Date: $(date)"
+echo "Hostname: $(hostname)"
+echo "Uptime: $(uptime -p)"
+echo ""
+echo "=== Resource Usage ==="
+echo "Disk: $(df -h / | tail -1 | awk '{print $5}')"
+echo "Memory: $(free -h | grep Mem | awk '{print $3 "/" $2}')"
+echo "Load: $(uptime | awk -F'load average:' '{print $2}')"
+echo ""
+echo "=== Service Status ==="
+for service in nginx docker ssh; do
+    if systemctl is-active --quiet $service; then
+        echo "✅ $service: Running"
+    else
+        echo "❌ $service: Stopped"
+    fi
+done
+```
+
+```bash
+# ทำให้รันได้และทดสอบ
+sudo chmod +x /opt/scripts/health_check.sh
+sudo /opt/scripts/health_check.sh
+```
+
+**📝 Navigator:** บันทึกผลลัพธ์ในตาราง
+
+| ข้อมูล | ค่าที่ได้ |
+|--------|----------|
+| Hostname | |
+| OS Version | |
+| Uptime | |
+| Disk Usage | |
+| Memory Usage | |
+| Services Running | |
 
 ---
 
-### 💡 สรุปความเข้าใจ
+## 👥 Task 2: User Management (25 นาที)
 
-| บริการ             | หน้าที่                                                           |
-| ------------------ | ----------------------------------------------------------------- |
-| **CloudFormation** | เครื่องมือสร้างระบบอัตโนมัติจาก Template                          |
-| **EC2**            | เครื่องคอมพิวเตอร์เสมือนในคลาวด์                                  |
-| **IAM Role & SSM** | ให้สิทธิ์และการเข้าถึงเครื่องอย่างปลอดภัย                         |
-| **Security Group** | กำหนดว่าเครื่องนี้จะรับการเชื่อมต่อจากใครได้บ้าง                  |
-| **User Data**      | สคริปต์ที่รันตอนเครื่องเริ่มต้น (ติดตั้งซอฟต์แวร์ให้โดยอัตโนมัติ) |
+**🔄 สลับบทบาท:** Navigator เป็น Driver
 
+### 2.1 ตรวจสอบ users ที่มีอยู่
 
+```bash
+# ดู users ทั้งหมด
+cat /etc/passwd | grep -E "(alice|bob|charlie|ubuntu)"
+
+# ดูกลุ่ม
+groups alice
+groups bob
+id charlie
+
+# ดู last login
+last -5
+```
+
+### 2.2 จัดการ users และ groups
+
+```bash
+# สร้าง groups
+sudo groupadd developers
+sudo groupadd admins
+sudo groupadd interns
+
+# จัด users เข้า groups
+sudo usermod -aG developers alice
+sudo usermod -aG admins bob
+sudo usermod -aG interns charlie
+sudo usermod -aG admins ubuntu
+
+# ตรวจสอบ
+groups alice bob charlie
+
+# สร้าง shared directories
+sudo mkdir -p /shared/{developers,admins,interns}
+sudo chown :developers /shared/developers
+sudo chown :admins /shared/admins
+sudo chown :interns /shared/interns
+
+# ตั้ง permissions
+sudo chmod 770 /shared/developers
+sudo chmod 770 /shared/admins
+sudo chmod 750 /shared/interns
+
+# ตรวจสอบ
+ls -la /shared/
+```
+
+### 2.3 ทดสอบ permissions
+
+```bash
+# ลอง login เป็น alice
+sudo su - alice
+
+# ทดสอบเขียนไฟล์
+echo "Alice's file" > /shared/developers/alice.txt
+ls -la /shared/developers/
+
+# ลองเข้า admin folder (ควร permission denied)
+ls /shared/admins/
+
+# กลับเป็น ubuntu
+exit
+
+# ทำเหมือนกันกับ bob
+sudo su - bob
+echo "Bob's admin file" > /shared/admins/bob.txt
+ls -la /shared/admins/
+exit
+```
+
+**📝 Navigator:** บันทึกตาราง permissions
+
+| User | Groups | Can Access | Cannot Access |
+|------|--------|------------|---------------|
+| alice | | | |
+| bob | | | |
+| charlie | | | |
+
+---
+
+## 🔍 Task 3: Log Analysis & Monitoring (25 นาที)
+
+**บทบาท:** ทำงานพร้อมกัน
+
+### 3.1 ตรวจสอบ System Logs
+
+```bash
+# ดู system logs
+sudo journalctl -n 20                    # 20 บรรทัดล่าสุด
+sudo journalctl -p err -n 10            # errors only
+sudo journalctl -u nginx                 # nginx logs
+sudo journalctl -u ssh                   # ssh logs
+
+# ดู auth logs
+sudo tail -20 /var/log/auth.log         # authentication logs
+sudo grep "Failed" /var/log/auth.log    # failed logins
+
+# ดู nginx logs
+sudo tail -f /var/log/nginx/access.log &  # background
+# กด Enter หลายครั้ง
+jobs                                     # ดู background jobs
+kill %1                                  # หยุด job
+
+# สร้าง log analyzer script
+sudo nano /opt/scripts/log_analyzer.sh
+```
+
+วางโค้ดนี้:
+
+```bash
+#!/bin/bash
+LOG_FILE="/var/log/auth.log"
+REPORT_FILE="/tmp/security_report_$(date +%Y%m%d).txt"
+
+echo "=== Security Report $(date) ===" > $REPORT_FILE
+echo "" >> $REPORT_FILE
+
+echo "Failed Login Attempts:" >> $REPORT_FILE
+grep "Failed password" $LOG_FILE | tail -10 >> $REPORT_FILE
+
+echo "" >> $REPORT_FILE
+echo "Successful Logins:" >> $REPORT_FILE
+grep "Accepted password\|Accepted publickey" $LOG_FILE | tail -10 >> $REPORT_FILE
+
+echo "" >> $REPORT_FILE
+echo "Sudo Commands:" >> $REPORT_FILE
+grep "sudo" $LOG_FILE | tail -10 >> $REPORT_FILE
+
+cat $REPORT_FILE
+```
+
+```bash
+# รันและดูผล
+sudo chmod +x /opt/scripts/log_analyzer.sh
+sudo /opt/scripts/log_analyzer.sh
+```
+
+### 3.2 Real-time Monitoring
+
+```bash
+# Monitor processes
+htop                      # กด F10 เพื่อออก
+
+# Monitor disk I/O (ถ้ามี)
+sudo apt install -y iotop
+sudo iotop -o            # Ctrl+C เพื่อออก
+
+# Monitor network
+sudo apt install -y nethogs
+sudo nethogs             # Ctrl+C เพื่อออก
+
+# Create monitoring dashboard script
+sudo nano /opt/scripts/monitor.sh
+```
+
+```bash
+#!/bin/bash
+while true; do
+    clear
+    echo "=== System Monitor Dashboard ==="
+    echo "Time: $(date)"
+    echo ""
+    echo "=== CPU & Memory ==="
+    top -bn1 | head -5
+    echo ""
+    echo "=== Disk Usage ==="
+    df -h | grep -E "^/dev/"
+    echo ""
+    echo "=== Network Connections ==="
+    ss -tu | head -10
+    echo ""
+    echo "Press Ctrl+C to exit"
+    sleep 5
+done
+```
+
+```bash
+sudo chmod +x /opt/scripts/monitor.sh
+# รันสักครู่แล้ว Ctrl+C
+sudo /opt/scripts/monitor.sh
+```
+
+---
+
+## 🔧 Task 4: Service Management (20 นาที)
+
+**🔄 สลับบทบาทอีกครั้ง**
+
+### 4.1 จัดการ Web Server
+
+```bash
+# ตรวจสอบ nginx
+systemctl status nginx
+sudo nginx -t                    # test configuration
+
+# แก้ไข default page
+sudo nano /var/www/html/index.html
+```
+
+ใส่ HTML:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Server - Pair [NUMBER]</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            text-align: center; 
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐧 Linux Admin Training Server</h1>
+        <h2>Pair: [YOUR_NUMBER]</h2>
+        <p>Server Time: <span id="time"></span></p>
+        <hr>
+        <h3>System Info</h3>
+        <p>Hostname: <?php echo gethostname(); ?></p>
+    </div>
+    <script>
+        setInterval(function() {
+            document.getElementById('time').innerHTML = new Date().toLocaleString();
+        }, 1000);
+    </script>
+</body>
+</html>
+```
+
+```bash
+# Restart nginx
+sudo systemctl restart nginx
+
+# ทดสอบใน browser
+curl http://localhost
+```
+
+### 4.2 Setup Cron Jobs
+
+```bash
+# ดู cron jobs ปัจจุบัน
+crontab -l
+sudo crontab -l
+
+# สร้าง cron job
+sudo crontab -e
+# เลือก nano (1)
+```
+
+เพิ่มบรรทัดนี้:
+
+```cron
+# Run health check every 5 minutes
+*/5 * * * * /opt/scripts/health_check.sh > /var/log/custom/health_$(date +\%Y\%m\%d_\%H\%M).log 2>&1
+
+# Clean old logs daily at 2 AM
+0 2 * * * find /var/log/custom -name "*.log" -mtime +7 -delete
+```
+
+```bash
+# Save และออก (Ctrl+X, Y, Enter)
+
+# รอ 5 นาที แล้วตรวจสอบ
+ls -la /var/log/custom/
+```
+
+---
+
+## 💾 Task 5: Backup & Recovery (20 นาที)
+
+### 5.1 สร้าง Backup Script
+
+```bash
+sudo nano /opt/scripts/backup.sh
+```
+
+```bash
+#!/bin/bash
+BACKUP_DIR="/var/backups/daily"
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/backup_$DATE.tar.gz"
+
+echo "Starting backup at $(date)"
+
+# Backup important directories
+tar -czf $BACKUP_FILE \
+    /etc/passwd \
+    /etc/group \
+    /etc/nginx/ \
+    /var/www/html/ \
+    /opt/scripts/ \
+    2>/dev/null
+
+if [ $? -eq 0 ]; then
+    echo "✅ Backup successful: $BACKUP_FILE"
+    ls -lh $BACKUP_FILE
+    
+    # Keep only last 5 backups
+    cd $BACKUP_DIR
+    ls -t backup_*.tar.gz | tail -n +6 | xargs rm -f 2>/dev/null
+else
+    echo "❌ Backup failed!"
+fi
+
+echo "Backup completed at $(date)"
+```
+
+```bash
+# ทำให้รันได้และทดสอบ
+sudo chmod +x /opt/scripts/backup.sh
+sudo /opt/scripts/backup.sh
+
+# ดูไฟล์ backup
+ls -la /var/backups/daily/
+```
+
+### 5.2 ทดสอบ Recovery
+
+```bash
+# สร้างสถานการณ์: ลบไฟล์
+sudo rm /var/www/html/index.html
+ls /var/www/html/
+
+# Restore จาก backup
+cd /tmp
+sudo tar -xzf /var/backups/daily/backup_*.tar.gz
+sudo cp -r var/www/html/index.html /var/www/html/
+ls /var/www/html/
+
+# ตรวจสอบ
+curl http://localhost | head -20
+```
+
+---
+
+## 🛡️ Task 6: Security Hardening (20 นาที)
+
+### 6.1 Setup Firewall
+
+```bash
+# ตรวจสอบ firewall
+sudo ufw status
+
+# ตั้งค่า basic rules
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
+
+# Enable firewall
+sudo ufw --force enable
+sudo ufw status verbose
+```
+
+### 6.2 Setup Fail2ban
+
+```bash
+# ตรวจสอบ fail2ban
+sudo systemctl status fail2ban
+
+# ดู jail configuration
+sudo fail2ban-client status
+sudo fail2ban-client status sshd
+
+# สร้าง custom jail
+sudo nano /etc/fail2ban/jail.local
+```
+
+ใส่:
+
+```ini
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 3
+
+[sshd]
+enabled = true
+port = ssh
+logpath = /var/log/auth.log
+
+[nginx-http-auth]
+enabled = true
+port = http,https
+logpath = /var/log/nginx/error.log
+```
+
+```bash
+# Restart fail2ban
+sudo systemctl restart fail2ban
+sudo fail2ban-client status
+```
+
+### 6.3 Security Audit Script
+
+```bash
+sudo nano /opt/scripts/security_audit.sh
+```
+
+```bash
+#!/bin/bash
+echo "=== Security Audit Report ==="
+echo "Date: $(date)"
+echo ""
+
+echo "=== Open Ports ==="
+sudo ss -tulpn | grep LISTEN
+
+echo ""
+echo "=== Users with sudo access ==="
+grep -Po '^sudo:.*:\K.*$' /etc/group
+
+echo ""
+echo "=== Failed login attempts (last 24h) ==="
+sudo grep "Failed password" /var/log/auth.log | tail -5
+
+echo ""
+echo "=== Firewall Status ==="
+sudo ufw status
+
+echo ""
+echo "=== Running Services ==="
+systemctl list-units --type=service --state=running | grep running
+```
+
+```bash
+sudo chmod +x /opt/scripts/security_audit.sh
+sudo /opt/scripts/security_audit.sh
+```
+
+---
+
+# ส่วนที่ 3: Challenge Tasks (30 นาที)
+
+## 🏆 Mini Challenges (ทำเป็นคู่)
+
+### Challenge 1: Performance Troubleshooting
+```bash
+# สร้าง high CPU load
+stress --cpu 2 --timeout 30s &
+
+# ใช้ tools หา process ที่ใช้ CPU สูง
+top
+htop
+ps aux --sort=-%cpu | head
+
+# Kill the process
+killall stress
+```
+
+### Challenge 2: Disk Space Management
+```bash
+# สร้างไฟล์ใหญ่
+dd if=/dev/zero of=/tmp/bigfile bs=100M count=5
+
+# หา files ที่ใหญ่ที่สุด
+du -sh /tmp/* | sort -hr | head -5
+find /tmp -type f -size +100M
+
+# Cleanup
+rm /tmp/bigfile
+```
+
+### Challenge 3: Automated Report
+สร้าง script ที่รวมทุก health checks:
+
+```bash
+sudo nano /opt/scripts/daily_report.sh
+# รวม health_check, log_analyzer, security_audit
+# ส่งผลไปที่ /var/log/custom/daily_report.txt
+```
+
+---
+
+# 📝 การส่งงาน
+
+## สิ่งที่ต้องส่ง:
+
+### 1. Screenshots (ทั้งคู่)
+- [ ] EC2 Instance running
+- [ ] SSH connection successful
+- [ ] Health check script output
+- [ ] User management (ls -la /shared/)
+- [ ] Web page ที่แก้ไขแล้ว
+- [ ] Firewall status
+- [ ] Backup files list
+
+### 2. Scripts (upload ไฟล์)
+- [ ] `/opt/scripts/health_check.sh`
+- [ ] `/opt/scripts/log_analyzer.sh`
+- [ ] `/opt/scripts/monitor.sh`
+- [ ] `/opt/scripts/backup.sh`
+- [ ] `/opt/scripts/security_audit.sh`
+
+### 3. รายงาน (1-2 หน้า)
+```markdown
+# Lab Report - Pair [NUMBER]
+
+## สมาชิกกลุ่ม
+1. ชื่อ: _____ รหัส: _____
+2. ชื่อ: _____ รหัส: _____
+
+## Instance Information
+- Instance ID: i-xxxxxxxxxx
+- Public IP: xx.xx.xx.xx
+- Instance Type: t3.micro
+
+## ปัญหาที่พบและวิธีแก้
+1. ปัญหา: _____
+   แก้ไข: _____
+
+## สิ่งที่ได้เรียนรู้
+1. _____
+2. _____
+3. _____
+
+## Feedback การทำงานคู่
+- สิ่งที่ทำได้ดี: _____
+- สิ่งที่ควรปรับปรุง: _____
+```
+
+---
+
+## 🧹 Cleanup (สำคัญ!)
+
+เมื่อเสร็จ Lab:
+
+```bash
+# 1. Backup your scripts
+tar -czf ~/scripts_backup.tar.gz /opt/scripts/
+
+# 2. Download via MobaXterm หรือ scp
+scp -i pair01-key.pem ubuntu@[IP]:~/scripts_backup.tar.gz .
+```
+
+**ใน AWS Console:**
+1. EC2 → Instances
+2. เลือก instance → Actions → Instance State → **Stop**
+3. หรือ **Terminate** ถ้าไม่ใช้แล้ว
+
+---
+
+## 📚 Resources เพิ่มเติม
+
+- [Ubuntu Server Guide](https://ubuntu.com/server/docs)
+- [Linux Command Reference](https://ss64.com/bash/)
+- [AWS EC2 Documentation](https://docs.aws.amazon.com/ec2/)
+
+---
+
+## ⚡ Quick Reference Commands
+
+| Task | Command |
+|------|---------|
+| Check system info | `uname -a` |
+| View running processes | `htop` or `top` |
+| Check disk usage | `df -h` |
+| View logs | `journalctl -xe` |
+| List services | `systemctl list-units` |
+| Check network | `ss -tulpn` |
+| Find files | `find / -name "*.log"` |
+| Monitor in real-time | `tail -f /var/log/syslog` |
+
+---
+
+**🎯 Good luck with your Lab! Happy Learning!**
